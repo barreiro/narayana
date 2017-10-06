@@ -20,30 +20,12 @@
  */
 package com.arjuna.ats.arjuna.utils;
 
-import java.lang.ref.Reference;
-import java.lang.ref.ReferenceQueue;
-import java.lang.ref.WeakReference;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-
 /**
  * Provides utilities to manage thread ids.
  */
 public class ThreadUtil
 {
-    /**
-     * The ID associated with the thread.
-     */
-    // Ideally a WeakHashMap would be used here, but unfortunately it's not thread-safe
-    // Would need to synchronize it, as even gets have to be treated as writes since they remove stale entries
-    private static final ConcurrentWeakHashMap THREAD_ID = new ConcurrentWeakHashMap();
 
-    /**
-     * The thread id counter.
-     */
-    private static AtomicLong id = new AtomicLong();
-    
     /**
      * Get the string ID for the current thread.
      * @return The thread id
@@ -60,72 +42,7 @@ public class ThreadUtil
      */
     public static String getThreadId(final Thread thread)
     {
-	return THREAD_ID.get(thread);
-    }
-    
-    /**
-     * Get the next thread id to use.
-     * @return The next thread id.
-     */
-    private static String getNextId()
-    {
-	return Long.toHexString(id.incrementAndGet()) ;
-    }
-
-    // --- //
-
-    private static final class ConcurrentWeakHashMap{
-
-        private final ConcurrentHashMap<WeakKey<Thread>, String> map = new ConcurrentHashMap<>();
-        private final ReferenceQueue<Thread> refQueue = new ReferenceQueue<>();
-
-        public String get(Thread thread) {
-            Objects.requireNonNull(thread, "thread");
-            purgeStaleKeys();
-
-            // Should just call computeIfAbsent, but do it old style to avoid creating lambdas
-            String value = map.get(thread);
-            if (value != null){
-                return value;
-            }
-            else {
-                String newValue = getNextId();
-                value = map.putIfAbsent(new WeakKey<>(thread, refQueue), newValue);
-                return value != null ? value : newValue;
-            }
-        }
-
-        private void purgeStaleKeys() {
-            Reference<? extends Thread> ref;
-            while((ref = refQueue.poll()) != null) {
-                map.remove(ref);
-            }
-        }
-
-        private static class WeakKey<K> extends WeakReference<K> {
-
-            private int hashCode;
-
-            private WeakKey(K key, ReferenceQueue<K> queue) {
-                super(key, queue);
-                hashCode = key.hashCode();
-            }
-
-            public int hashCode() {
-                return hashCode;
-            }
-
-            public boolean equals(Object other) {
-                if (other == this) {
-                    return true;
-                } else if (!(other instanceof WeakKey)) {
-                    return false;
-                } else {
-                    Object referent = this.get();
-                    return referent != null && referent == ((WeakKey)other).get();
-                }
-            }
-        }
+	return Long.toHexString(thread.getId());
     }
 
 }
