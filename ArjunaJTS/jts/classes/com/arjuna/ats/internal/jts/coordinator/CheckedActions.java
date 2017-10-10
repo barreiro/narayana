@@ -36,21 +36,20 @@ import java.util.Hashtable;
 import org.omg.CORBA.SystemException;
 
 import com.arjuna.ats.arjuna.coordinator.CheckedAction;
-import com.arjuna.ats.arjuna.utils.ThreadUtil;
 
 public class CheckedActions
 {
 
     public static final synchronized void remove () throws SystemException
     {
-        otsCheckedAction.remove(ThreadUtil.getThreadId());
+        otsCheckedAction.remove(Thread.currentThread());
     }
     
     public static final synchronized CheckedAction get () throws SystemException
     {
     	if (otsCheckedAction != null)
         {
-    	    return (CheckedAction) otsCheckedAction.get(ThreadUtil.getThreadId());
+    	    return otsCheckedAction.get(Thread.currentThread());
         }
     	else
     	    return null;
@@ -59,11 +58,11 @@ public class CheckedActions
     public static final synchronized void set (CheckedAction ca) throws SystemException
     {
     	if (otsCheckedAction == null)
-    	    otsCheckedAction = new Hashtable<String, CheckedAction>();
+    	    otsCheckedAction = new Hashtable<>();
     
-    	otsCheckedAction.put(ThreadUtil.getThreadId(), ca);
+    	otsCheckedAction.put(Thread.currentThread(), ca);
     }
 
-    private static Hashtable<String, CheckedAction> otsCheckedAction = null;
+    private static Hashtable<Thread, CheckedAction> otsCheckedAction = null;
 
 }

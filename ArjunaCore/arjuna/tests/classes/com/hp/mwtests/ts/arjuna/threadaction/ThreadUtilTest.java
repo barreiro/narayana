@@ -75,14 +75,14 @@ public class ThreadUtilTest {
             }
         });
         AtomicAction tx = new AtomicAction();
-        assertFalse(tx.removeChildThread(ThreadUtil.getThreadId(thread)));
+        assertFalse(tx.removeChildThread(thread));
         tx.begin();
 
         synchronized (tx) {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    assertTrue(tx.removeChildThread(ThreadUtil.getThreadId(thread)));
+                    assertTrue(tx.removeChildThread(thread));
                     assertTrue(tx.end(true) == ActionStatus.COMMITTED);
                     synchronized (tx) {
                         tx.notify();

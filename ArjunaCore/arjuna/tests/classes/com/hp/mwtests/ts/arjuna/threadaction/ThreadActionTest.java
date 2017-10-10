@@ -107,6 +107,6 @@ public class ThreadActionTest
         
         ThreadActionData.removeSetup(ds);
         
-        ThreadActionData.popAction(Thread.currentThread().getName());
+        ThreadActionData.popAction(Thread.currentThread());
     }
 }

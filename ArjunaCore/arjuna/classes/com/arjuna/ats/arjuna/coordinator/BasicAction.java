@@ -35,8 +35,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -50,7 +53,6 @@ import com.arjuna.ats.arjuna.objectstore.ParticipantStore;
 import com.arjuna.ats.arjuna.objectstore.StoreManager;
 import com.arjuna.ats.arjuna.state.InputObjectState;
 import com.arjuna.ats.arjuna.state.OutputObjectState;
-import com.arjuna.ats.arjuna.utils.ThreadUtil;
 import com.arjuna.ats.arjuna.utils.Utility;
 import com.arjuna.ats.internal.arjuna.Header;
 import com.arjuna.ats.internal.arjuna.thread.ThreadActionData;
@@ -605,10 +607,9 @@ public class BasicAction extends StateManager
             if (actionStatus <= ActionStatus.ABORTING)
             {
                 if (_childThreads == null)
-                    _childThreads = new Hashtable<String, Thread>();
+                    _childThreads =ConcurrentHashMap.newKeySet();
 
-                _childThreads.put(ThreadUtil.getThreadId(t), t); // makes sure so we don't get
-                // duplicates
+                _childThreads.add(t); // makes sure so we don't get duplicates
 
                 result = true;
             }
@@ -636,7 +637,7 @@ public class BasicAction extends StateManager
 
     public final boolean removeChildThread () // current thread
     {
-        return removeChildThread(ThreadUtil.getThreadId(Thread.currentThread()));
+        return removeChildThread(Thread.currentThread());
     }
 
     /**
@@ -646,13 +647,13 @@ public class BasicAction extends StateManager
      *         otherwise.
      */
 
-    public final boolean removeChildThread (String threadId)
+    public final boolean removeChildThread (Thread t)
     {
         if (tsLogger.logger.isTraceEnabled()) {
-            tsLogger.logger.trace("BasicAction::removeChildThread () action "+get_uid()+" removing "+threadId);
+            tsLogger.logger.trace("BasicAction::removeChildThread () action "+get_uid()+" removing "+ t.getName());
         }
 
-        if (threadId == null)
+        if (t == null)
             return false;
 
         boolean result = false;
@@ -663,7 +664,7 @@ public class BasicAction extends StateManager
         {
             if (_childThreads != null)
             {
-                _childThreads.remove(threadId);
+                _childThreads.remove(t);
                 result = true;
             }
         }
@@ -672,7 +673,7 @@ public class BasicAction extends StateManager
 
         if (tsLogger.logger.isTraceEnabled())
         {
-            tsLogger.logger.trace("BasicAction::removeChildThread () action "+get_uid()+" removing "+threadId+" result = "+result);
+            tsLogger.logger.trace("BasicAction::removeChildThread () action "+get_uid()+" removing "+ t.getName() +" result = "+result);
         }
 
         return result;
@@ -3394,7 +3395,7 @@ public class BasicAction extends StateManager
                     // This was added for JBTM-2476 - it could be used during commit
                     // but as the commit path needs to be optimum and getStackTrace is expensive
                     // I did not include it
-                    for (Thread entry : _childThreads.values()) {
+                    for (Thread entry : _childThreads) {
                         StackTraceElement[] stackTrace = entry.getStackTrace();
                         StringBuilder sb = new StringBuilder();
                         for (StackTraceElement element : stackTrace) {
@@ -3405,8 +3406,15 @@ public class BasicAction extends StateManager
                     }
                 }
 
-                if (_checkedAction != null)
-                    _checkedAction.check(isCommit, get_uid(), _childThreads);
+                if (_checkedAction != null) {
+                    Hashtable<String, Thread> compatibleThreadList = new Hashtable<>();
+                    synchronized (this) {
+                        for ( Thread t : _childThreads ) {
+                            compatibleThreadList.put( Long.toHexString( t.getId() ), t );
+                        }
+                    }
+                    _checkedAction.check( isCommit, get_uid(), compatibleThreadList );
+                }
 
                 removeAllChildThreads();
             }
@@ -3489,14 +3497,8 @@ public class BasicAction extends StateManager
                 * the action pointer, i.e., they are now no longer within this
                 * action.
                 */
-
-            Enumeration<Thread> iter = _childThreads.elements();
-            Thread t = null;
-
-            while (iter.hasMoreElements())
+            for (Thread t : _childThreads)
             {
-                t = iter.nextElement();
-
                 if (tsLogger.logger.isTraceEnabled()) {
                     tsLogger.logger.trace("BasicAction::removeAllChildThreads () action "+get_uid()+" removing "+t);
                 }
@@ -3745,7 +3747,7 @@ public class BasicAction extends StateManager
       * provide an explicit means of registering threads with an action.
       */
 
-    private Hashtable<String, Thread> _childThreads;
+    private Set<Thread> _childThreads;
     private Hashtable<BasicAction, BasicAction> _childActions;
 
     private BasicActionFinalizer finalizerObject;

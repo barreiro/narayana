@@ -26,23 +26,46 @@ package com.arjuna.ats.arjuna.utils;
 public class ThreadUtil
 {
 
-    /**
-     * Get the string ID for the current thread.
-     * @return The thread id
-     */
-    public static String getThreadId()
-    {
-	return getThreadId(Thread.currentThread()) ;
+    private static ThreadGroup rootThreadGroup = null;
+
+    private static ThreadGroup getRootThreadGroup( ) {
+        if ( rootThreadGroup == null ) {
+            ThreadGroup tg = Thread.currentThread().getThreadGroup();
+            for ( ThreadGroup ptg = tg.getParent(); ptg != null; ptg = tg.getParent() ) {
+                tg = ptg;
+            }
+            rootThreadGroup = tg;
+        }
+        return rootThreadGroup;
     }
-    
+
+    private static Thread[] getAllThreads( ) {
+        ThreadGroup root = getRootThreadGroup( );
+        int nAlloc = java.lang.management.ManagementFactory.getThreadMXBean().getThreadCount();
+        int n;
+        Thread[] threads;
+        do {
+            nAlloc *= 2;
+            threads = new Thread[ nAlloc ];
+            n = root.enumerate( threads, true );
+        } while ( n == nAlloc );
+        return java.util.Arrays.copyOf( threads, n );
+    }
+
     /**
-     * Get the string ID for the specified thread.
-     * @param thread The thread.
-     * @return The thread id
+     * Get the thread for a specified ID, as returned by Thread.getId()
+     *
+     * @param id The thread id
+     * @return The Thread 
      */
-    public static String getThreadId(final Thread thread)
-    {
-	return Long.toHexString(thread.getId());
+    public static Thread getThread( long id ) {
+        Thread[] threads = getAllThreads();
+        for ( Thread thread : threads ) {
+            if ( thread.getId() == id ) {
+                return thread;
+            }
+        }
+        return null;
     }
 
 }

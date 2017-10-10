@@ -192,7 +192,7 @@ public void send_request (ClientRequestInfo request_info) throws SystemException
 		 */
 
 		Any localData = request_info.get_slot(_localSlot);
-		String threadId = null;
+		Thread t = null;
 		boolean problem = false;
 		Any data = null;
 
@@ -206,15 +206,17 @@ public void send_request (ClientRequestInfo request_info) throws SystemException
 
 		if (localData.type().kind().value() != TCKind._tk_null)
 		{
-		    if ((threadId = localData.extract_string()) == null)
+			long threadId = localData.extract_longlong();
+		    if (threadId == 0)
 			throw new UNKNOWN(jtsLogger.i18NLogger.get_orbspecific_javaidl_interceptors_interposition_invalidparam());
+		    t = ThreadUtil.getThread( threadId );
 		}
 		else
-		    threadId = ThreadUtil.getThreadId() ;
+		    t = Thread.currentThread();
 		
-		if (threadId != null)
+		if (t != null)
 		{
-		    ControlWrapper theControl = OTSImpleManager.current().contextManager().current(threadId);
+		    ControlWrapper theControl = OTSImpleManager.current().contextManager().current(t);
 
 		    if (theControl != null)
 		    {

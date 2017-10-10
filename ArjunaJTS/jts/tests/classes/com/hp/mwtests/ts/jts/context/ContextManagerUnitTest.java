@@ -55,7 +55,7 @@ public class ContextManagerUnitTest extends TestBase
     {
         ContextManager manager = new ContextManager();
         
-        assertEquals(manager.current(Thread.currentThread().getName()), null);
+        assertEquals(manager.current(Thread.currentThread()), null);
         assertEquals(manager.current(), null);
         
         OTSImpleManager.current().begin();

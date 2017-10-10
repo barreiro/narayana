@@ -31,6 +31,7 @@
 
 package com.arjuna.ats.jts.orbspecific.ibmorb.interceptors.context;
 
+import com.arjuna.ats.arjuna.utils.ThreadUtil;
 import org.omg.CORBA.Any;
 import org.omg.CORBA.BAD_PARAM;
 import org.omg.CORBA.LocalObject;
@@ -47,7 +48,6 @@ import org.omg.IOP.ServiceContext;
 import org.omg.PortableInterceptor.ClientRequestInfo;
 import org.omg.PortableInterceptor.ClientRequestInterceptor;
 
-import com.arjuna.ats.arjuna.utils.ThreadUtil;
 import com.arjuna.ats.internal.jts.ControlWrapper;
 import com.arjuna.ats.internal.jts.ORBManager;
 import com.arjuna.ats.internal.jts.OTSImpleManager;
@@ -178,7 +178,7 @@ public void send_request (ClientRequestInfo request_info) throws SystemException
 		 */
 
 		Any localData = request_info.get_slot(_localSlot);
-		String threadId = null;
+		Thread t = null;
 		boolean problem = false;
 		String stringRef = null;
 
@@ -192,15 +192,18 @@ public void send_request (ClientRequestInfo request_info) throws SystemException
 
 		if (localData.type().kind().value() != TCKind._tk_null)
 		{
-		    if ((threadId = localData.extract_string()) == null)
+			long threadId= localData.extract_longlong();
+		    if (threadId == 0)
 			throw new UNKNOWN(jtsLogger.i18NLogger.get_orbspecific_javaidl_interceptors_context_invalidparam());
+
+		    t = ThreadUtil.getThread(threadId);
 		}
 		else
-		    threadId = ThreadUtil.getThreadId() ;
+		    t = Thread.currentThread();
 
-		if (threadId != null)
+		if (t != null)
 		{
-		    ControlWrapper theControl = OTSImpleManager.current().contextManager().current(threadId);
+		    ControlWrapper theControl = OTSImpleManager.current().contextManager().current(t);
 
 		    if (theControl != null)
 		    {

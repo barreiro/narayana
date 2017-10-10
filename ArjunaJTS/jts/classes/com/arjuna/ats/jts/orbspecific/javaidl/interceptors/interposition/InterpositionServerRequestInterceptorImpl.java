@@ -32,6 +32,7 @@
 package com.arjuna.ats.jts.orbspecific.javaidl.interceptors.interposition;
 
 import com.arjuna.ats.arjuna.common.arjPropertyManager;
+import com.arjuna.ats.arjuna.utils.ThreadUtil;
 import org.omg.CORBA.Any;
 import org.omg.CORBA.BAD_OPERATION;
 import org.omg.CORBA.BAD_PARAM;
@@ -343,15 +344,16 @@ private void suspendContext (ServerRequestInfo request_info) throws SystemExcept
 
 	if ((data != null) && (data.type().kind().value() != TCKind._tk_null))
 	{
-	    String threadId = null;
-
 	    try
 	    {
-		if ((threadId = data.extract_string()) != null)
+        long threadId = data.extract_longlong();
+		if (threadId != 0)
 		{
-		    ControlWrapper ctx = OTSImpleManager.current().contextManager().popAction(threadId);
+		    Thread t = ThreadUtil.getThread(threadId);
 
-		    OTSImpleManager.current().contextManager().purgeActions(threadId);
+		    ControlWrapper ctx = OTSImpleManager.current().contextManager().popAction(t);
+
+		    OTSImpleManager.current().contextManager().purgeActions(t);
 		}
 	    }
 	    catch (BAD_OPERATION bex)

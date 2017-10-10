@@ -31,6 +31,7 @@
 
 package com.arjuna.ats.jts.orbspecific.jacorb.interceptors.interposition;
 
+import com.arjuna.ats.arjuna.utils.ThreadUtil;
 import org.jacorb.orb.portableInterceptor.ServerRequestInfoImpl;
 import org.omg.CORBA.Any;
 import org.omg.CORBA.BAD_OPERATION;
@@ -305,18 +306,19 @@ private void suspendContext (ServerRequestInfo request_info) throws SystemExcept
 
 	if ((data != null) && (data.type().kind().value() != TCKind._tk_null))
 	{
-	    String threadId = null;
-
 	    try
 	    {
-		if ((threadId = data.extract_string()) != null)
+		long threadId = data.extract_longlong();
+		if (threadId != 0)
 		{
+			Thread t = ThreadUtil.getThread(threadId);
+
 		    //		    ControlWrapper ctx = OTSImpleManager.systemCurrent().contextManager().popAction(threadId);
-		    ControlWrapper ctx = OTSImpleManager.current().contextManager().popAction(threadId);
+		    ControlWrapper ctx = OTSImpleManager.current().contextManager().popAction(t);
 
 		    //		    OTSImpleManager.systemCurrent().contextManager().purgeActions(threadId);
 
-		    OTSImpleManager.current().contextManager().purgeActions(threadId);
+		    OTSImpleManager.current().contextManager().purgeActions(t);
 		}
 	    }
 	    catch (BAD_OPERATION bex)

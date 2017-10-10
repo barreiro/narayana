@@ -53,7 +53,6 @@ import org.omg.PortableInterceptor.InvalidSlot;
 import com.arjuna.ArjunaOTS.ActionControl;
 import com.arjuna.ats.arjuna.common.Uid;
 import com.arjuna.ats.arjuna.exceptions.FatalError;
-import com.arjuna.ats.arjuna.utils.ThreadUtil;
 import com.arjuna.ats.internal.arjuna.thread.ThreadActionData;
 import com.arjuna.ats.internal.jts.ControlWrapper;
 import com.arjuna.ats.internal.jts.ORBManager;
@@ -104,17 +103,14 @@ public class ContextManager
      * @return the context.
      */
 
-    public ControlWrapper current (String threadId) throws SystemException
+    public ControlWrapper current (Thread t) throws SystemException
     {
-	Object arg = otsCurrent.get(threadId);
-	ControlWrapper wrapper = null;
+	Stack hier = otsCurrent.get(t);
 
-	if (arg != null)
+	if (hier != null)
 	{
 	    try
 	    {
-		Stack hier = (Stack) arg;
-
 		return (ControlWrapper) hier.peek();
 	    }
 	    catch (EmptyStackException e)
@@ -138,16 +134,14 @@ public class ContextManager
         jtsLogger.logger.trace("ContextManager::current ()");
     }
 
-	Object arg = otsCurrent.get(ThreadUtil.getThreadId());
+	Stack arg = otsCurrent.get(Thread.currentThread());
 	ControlWrapper wrapper = null;
 
 	if (arg != null)
 	{
 	    try
 	    {
-		Stack hier = (Stack) arg;
-
-		wrapper = (ControlWrapper) hier.peek();
+		wrapper = (ControlWrapper) arg.peek();
 	    }
 	    catch (EmptyStackException e)
 	    {
@@ -187,19 +181,17 @@ public class ContextManager
 	return wrapper;
     }
 
-    public final ControlWrapper popAction (String threadId)
+    public final ControlWrapper popAction (Thread t)
     {
 	if (jtsLogger.logger.isTraceEnabled()) {
         jtsLogger.logger.trace("ContextManager::popAction ()");
     }
 
 	ControlWrapper action = null;
-	Object arg = threadId == null ? null : otsCurrent.get(threadId);
+	Stack sl = otsCurrent.get(t);
 
-	if (arg != null)
+	if (sl != null)
 	{
-	    Stack sl = (Stack) arg;
-
 	    try
 	    {
 		/*
@@ -222,7 +214,7 @@ public class ContextManager
 	    {
 		sl = null;
 
-		otsCurrent.remove(threadId);
+		otsCurrent.remove(t);
 
 		disassociateContext(OTSManager.getLocalSlotId());
 	    }
@@ -254,7 +246,7 @@ public class ContextManager
 
 		try
 		{
-		    ThreadActionData.popAction(threadId);
+		    ThreadActionData.popAction(t);
 		}
 		catch (EmptyStackException e)
 		{
@@ -267,10 +259,10 @@ public class ContextManager
 
     public final ControlWrapper popAction ()
     {
-        return popAction(ThreadUtil.getThreadId());
+        return popAction(Thread.currentThread());
     }
 
-    public final void purgeActions (String threadId)
+    public final void purgeActions (Thread t)
     {
 	if (jtsLogger.logger.isTraceEnabled()) {
         jtsLogger.logger.trace("ContextManager::purgeActions ()");
@@ -283,20 +275,13 @@ public class ContextManager
 	 * are!
 	 */
 
-	ControlWrapper ptr = popAction(threadId);
-
-	while (ptr != null)
-	{
-	    ptr = null;
-
-	    ptr = popAction(threadId);
-
-	} while (ptr != null);
+	while (popAction(t) != null){
+	}
     }
 
     public final void purgeActions ()
     {
-        purgeActions(ThreadUtil.getThreadId(Thread.currentThread()));
+        purgeActions(Thread.currentThread());
     }
 
     /**
@@ -519,9 +504,7 @@ public class ContextManager
 	if (jtsLogger.logger.isTraceEnabled()) {
         jtsLogger.logger.trace("ContextManager::pushAction ()");
     }
-
-	final String threadId = ThreadUtil.getThreadId() ;
-	Stack sl = (Stack) otsCurrent.get(threadId);
+	Stack sl = otsCurrent.get(Thread.currentThread());
 	boolean isNew = false;
 
 	if (sl == null)
@@ -549,7 +532,7 @@ public class ContextManager
 	sl.push(action);
 
 	if (isNew)
-	    otsCurrent.put(threadId, sl);
+	    otsCurrent.put(Thread.currentThread(), sl);
 
 	associateContext();
 
@@ -612,7 +595,7 @@ public class ContextManager
 
 		    org.omg.CORBA.Any threadData = ORBManager.getORB().orb().create_any();
 
-		    threadData.insert_string(ThreadUtil.getThreadId());
+		    threadData.insert_longlong(Thread.currentThread().getId());
 
 		    _piCurrent.set_slot(slotId, threadData);
 
@@ -742,7 +725,7 @@ public class ContextManager
 		{
 		    org.omg.CORBA.Any localDataAny = ORBManager.getORB().orb().create_any();
 
-		    localDataAny.insert_string(ThreadUtil.getThreadId());
+		    localDataAny.insert_longlong(Thread.currentThread().getId());
 
 		    _piCurrent.set_slot(slotId, localDataAny);
 		}
@@ -790,7 +773,7 @@ public class ContextManager
 			return null;		
 	}
 
-    private Hashtable otsCurrent = new Hashtable();
+    private Hashtable<Thread, Stack> otsCurrent = new Hashtable<>();
 
     private org.omg.PortableInterceptor.Current _piCurrent = null;
 

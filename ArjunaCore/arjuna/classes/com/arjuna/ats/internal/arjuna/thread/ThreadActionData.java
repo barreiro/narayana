@@ -138,19 +138,19 @@ public class ThreadActionData
 
 	public static BasicAction popAction () throws NoSuchElementException
 	{
-		return popAction(ThreadUtil.getThreadId(), true);
+		return popAction(Thread.currentThread(), true);
 	}
 
 	public static BasicAction popAction (boolean unregister)
 			throws NoSuchElementException
 	{
-		return popAction(ThreadUtil.getThreadId(), unregister);
+		return popAction(Thread.currentThread(), unregister);
 	}
 
-	public static BasicAction popAction (String threadId)
+	public static BasicAction popAction (Thread t)
 			throws NoSuchElementException
 	{
-		return popAction(threadId, true);
+		return popAction(t, true);
 	}
 
 	/**
@@ -158,7 +158,7 @@ public class ThreadActionData
 	 * is not removed from the action.
 	 */
 
-	public static BasicAction popAction (String threadId, boolean unregister)
+	public static BasicAction popAction (Thread t, boolean unregister)
 			throws NoSuchElementException
 	{
 		Deque<BasicAction> txs = _threadList.get();
@@ -169,7 +169,7 @@ public class ThreadActionData
 
 			if (a != null && unregister)
 			{
-				a.removeChildThread(threadId);
+				a.removeChildThread(t);
 			}
 
 			if (txs.size() == 0)
@@ -200,7 +200,7 @@ public class ThreadActionData
 	{
 		if (act != null && unregister)
         {
-			act.removeChildThread(ThreadUtil.getThreadId(t));
+			act.removeChildThread(t);
         }
 
 		Deque<BasicAction> txs = _threadList.get();
@@ -242,7 +242,7 @@ public class ThreadActionData
 
 					if (act != null)
                     {
-						act.removeChildThread(ThreadUtil.getThreadId(t));
+						act.removeChildThread(t);
                     }
 				}
 			}

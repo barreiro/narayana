@@ -44,7 +44,6 @@ import javax.naming.Context;
 import java.util.Hashtable;
 import java.io.Serializable;
 
-import com.arjuna.ats.arjuna.utils.ThreadUtil;
 import com.arjuna.ats.internal.jts.ControlWrapper;
 import com.arjuna.ats.internal.jts.OTSImpleManager;
 import com.arjuna.ats.jta.TransactionManager;
@@ -72,18 +71,7 @@ public class PropagationContextManager implements
             jbossatxLogger.logger.trace("PropagationContextManager.getTransactionPropagationContext - called");
         }
 
-        final String threadId = ThreadUtil.getThreadId();
-        ControlWrapper theControl;
-
-        if (threadId != null)
-        {
-            theControl = OTSImpleManager.current().contextManager().current(
-                    threadId);
-        }
-        else
-        {
-            theControl = OTSImpleManager.current().contextManager().current();
-        }
+        ControlWrapper theControl = OTSImpleManager.current().contextManager().current();
 
         try
         {
